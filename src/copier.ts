@@ -31,7 +31,7 @@ export class WebsiteCopier {
     this.options = {
       maxDepth: 3,
       followExternalLinks: false,
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       timeout: 30000,
       concurrency: 5,
       ...options
@@ -40,7 +40,18 @@ export class WebsiteCopier {
     this.client = axios.create({
       timeout: this.options.timeout,
       headers: {
-        'User-Agent': this.options.userAgent
+        'User-Agent': this.options.userAgent,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'DNT': '1',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'Cache-Control': 'max-age=0'
       },
       maxRedirects: 5,
       validateStatus: (status) => status < 400
@@ -134,8 +145,25 @@ export class WebsiteCopier {
     try {
       console.log(`[${this.stats.downloadedAssets + 1}/${this.stats.totalAssets}] Downloading: ${url}`);
 
+      // Adjust headers based on asset type
+      const headers: any = {};
+      if (assetType === AssetType.CSS) {
+        headers['Accept'] = 'text/css,*/*;q=0.1';
+        headers['Sec-Fetch-Dest'] = 'style';
+      } else if (assetType === AssetType.JavaScript) {
+        headers['Accept'] = '*/*';
+        headers['Sec-Fetch-Dest'] = 'script';
+      } else if (assetType === AssetType.Image) {
+        headers['Accept'] = 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8';
+        headers['Sec-Fetch-Dest'] = 'image';
+      } else if (assetType === AssetType.Font) {
+        headers['Accept'] = '*/*';
+        headers['Sec-Fetch-Dest'] = 'font';
+      }
+
       const response = await this.client.get(url, {
-        responseType: assetType === AssetType.Image || assetType === AssetType.Font ? 'arraybuffer' : 'text'
+        responseType: assetType === AssetType.Image || assetType === AssetType.Font ? 'arraybuffer' : 'text',
+        headers
       });
 
       const contentType = response.headers['content-type'];
